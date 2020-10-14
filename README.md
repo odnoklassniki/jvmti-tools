@@ -7,6 +7,7 @@ Collection of small Java serviceability improvements based on
  - [vmtrace](#vmtrace)
  - [antimodule](#antimodule)
  - [heapsampler](#heapsampler)
+ - [faketime](#faketime)
 
 ## richNPE
 
@@ -152,3 +153,33 @@ The agent can be also loaded dynamically in run-time:
 The optional `interval` argument specifies the sampling interval in bytes.
 The default value is 512 KB.
 The output is printed on `stdout`.
+
+
+## faketime
+
+Changes current date/time for a Java application without affecting system date/time.
+
+The agent rebinds the native entry for `System.currentTimeMillis` and related methods
+and adds the specified offset to the times returned by these methods.
+
+#### Compilation
+
+    # Linux
+    g++ -O2 -fPIC -shared -I $JAVA_HOME/include -I $JAVA_HOME/include/linux -olibfaketime.so faketime.cpp
+    
+    # Windows
+    cl /O2 /LD /I "%JAVA_HOME%/include" -I "%JAVA_HOME%/include/win32" faketime.cpp
+
+#### Usage
+
+    java -agentpath:/path/to/libfaketime.so=timestamp|+-offset MainClass
+
+where the agent argument is either
+
+ - absolute `timestamp` in milliseconds from Epoch, or
+ - relative `offset` in milliseconds, if `offset` starts with `+` or `-`
+
+Since `System.currentTimeMillis` is a JVM intrinsic method, it's also required to disable
+the corresponding intrinsic to make sure the JNI method is called:
+
+    java -XX:+UnlockDiagnosticVMOptions -XX:DisableIntrinsic=_currentTimeMillis -XX:CompileCommand=dontinline,java.lang.System::currentTimeMillis
